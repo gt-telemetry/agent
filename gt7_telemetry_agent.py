@@ -9,6 +9,10 @@ import getpass
 import re
 from gt7_processing import GT7_UDP_PORT, HEARTBEAT_INTERVAL, decrypt_packet, GT7Packet, send_heartbeat
 from lap import save_lap, format_lap_time
+import requests
+import os
+
+BACKEND_URL = 'https://api.gt-telemetry.com'
 
 def main():
     parser = argparse.ArgumentParser(description="GT7 Telemetry Lap Saver")
@@ -66,11 +70,27 @@ def main():
             print("\nExiting...")
             sys.exit(0)
         from lap import test_jwt_token
-        if test_jwt_token(jwt_token):
+        if test_jwt_token(jwt_token, BACKEND_URL):
             print("JWT token is valid.")
             break
         else:
             print("Invalid JWT token. Please try again.")
+
+    # --- Start session heartbeat thread ---
+    def session_heartbeat_thread():
+        while True:
+            try:
+                resp = requests.post(f"{BACKEND_URL}/session/heartbeat", headers={"Authorization": f"Bearer {jwt_token}"}, timeout=10, verify=False)
+                if not resp.ok:
+                    print(f"Session heartbeat failed: {resp.status_code} {resp.text}")
+                    print("Exiting agent due to lost session.")
+                    os._exit(1)
+            except Exception as e:
+                #print(f"Session heartbeat error: {e}")
+                print("Exiting agent due to lost session.")
+                os._exit(1)
+            time.sleep(60)
+    threading.Thread(target=session_heartbeat_thread, daemon=True).start()
 
     # Set up lap write queue and writer thread
     lap_write_queue = queue.Queue()
@@ -78,7 +98,7 @@ def main():
         while True:
             lap_data, lap_time = lap_write_queue.get()
             try:
-                save_lap(lap_data, lap_time, jwt_token)
+                save_lap(lap_data, lap_time, jwt_token, BACKEND_URL)
             except Exception as e:
                 print(e)
                 sys.exit(1)
