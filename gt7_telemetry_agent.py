@@ -8,16 +8,47 @@ import json
 import getpass
 import re
 from gt7_processing import GT7_UDP_PORT, HEARTBEAT_INTERVAL, decrypt_packet, GT7Packet, send_heartbeat
-from lap import save_lap, format_lap_time
+from lap import save_lap, save_lap_locally, test_jwt_token
 import requests
 import os
 
 BACKEND_URL = 'https://api.gt-telemetry.com'
 
+def session_heartbeat_thread(jwt_token):
+        while True:
+            try:
+                resp = requests.post(f"{BACKEND_URL}/session/heartbeat", headers={"Authorization": f"Bearer {jwt_token}"}, timeout=10, verify=False)
+                if not resp.ok:
+                    print(f"Session heartbeat failed: {resp.status_code} {resp.text}")
+                    print("Exiting agent due to lost session.")
+                    os._exit(1)
+            except Exception as e:
+                print(f"Session heartbeat error: {e}")
+                print("Exiting agent due to lost session.")
+                os._exit(1)
+            time.sleep(60)
+
+def lap_writer(lap_write_queue, jwt_token):
+        while True:
+            try:
+                lap_data, lap_time = lap_write_queue.get()
+                if not jwt_token:
+                    save_lap_locally(lap_data, lap_time)
+                else:
+                    save_lap(lap_data, lap_time, jwt_token, BACKEND_URL)
+            except (KeyboardInterrupt, EOFError):
+                print("\nExiting...")
+                sys.exit(0)
+            except Exception as e:
+                print(e)
+                sys.exit(1)
+            lap_write_queue.task_done()
+
 def main():
     parser = argparse.ArgumentParser(description="GT7 Telemetry Lap Saver")
     parser.add_argument('--ps_ip', help='PlayStation IP address')
     parser.add_argument('--track', action='store_true', help='Record only positional value to save track layout')
+    parser.add_argument('--local', action='store_true', help='Store laps locally instead of uploading to GT Telemetry')
     args = parser.parse_args()
 
     # Prompt for PlayStation IP if not provided
@@ -62,48 +93,50 @@ def main():
     lap_number = None
     recording_started = False
 
-    # Prompt for JWT token at startup and test it
-    while True:
-        try:
-            jwt_token = getpass.getpass('Paste your JWT token (input hidden): ')
-        except (KeyboardInterrupt, EOFError):
-            print("\nExiting...")
-            sys.exit(0)
-        from lap import test_jwt_token
-        if test_jwt_token(jwt_token, BACKEND_URL):
-            print("JWT token is valid.")
-            break
-        else:
-            print("Invalid JWT token. Please try again.")
-
-    # --- Start session heartbeat thread ---
-    def session_heartbeat_thread():
+    if not args.local:
+        # Prompt for local or remote lap saving method
         while True:
             try:
-                resp = requests.post(f"{BACKEND_URL}/session/heartbeat", headers={"Authorization": f"Bearer {jwt_token}"}, timeout=10, verify=False)
-                if not resp.ok:
-                    print(f"Session heartbeat failed: {resp.status_code} {resp.text}")
-                    print("Exiting agent due to lost session.")
-                    os._exit(1)
-            except Exception as e:
-                #print(f"Session heartbeat error: {e}")
-                print("Exiting agent due to lost session.")
-                os._exit(1)
-            time.sleep(60)
-    threading.Thread(target=session_heartbeat_thread, daemon=True).start()
+                save_method = input('Do you want to save your laps locally [l] or remotely on GT Telemetry App [r]: ')
+            except (KeyboardInterrupt, EOFError):
+                print("\nExiting...")
+                sys.exit(0)
+            # Simple IPv4 validation
+            if save_method.lower() == 'r':
+                break
+            elif save_method.lower() == 'l':
+                break
+            else:
+                print("Invalid option. Please enter 'l' for local or 'r' for remote.")
+
+        if save_method.lower() == 'r':
+            # Prompt for JWT token at startup and test it
+            while True:
+                try:
+                    jwt_token = getpass.getpass('Paste your JWT token (input hidden): ')
+                except (KeyboardInterrupt, EOFError):
+                    print("\nExiting...")
+                    sys.exit(0)
+                
+                if test_jwt_token(jwt_token, BACKEND_URL):
+                    print("JWT token is valid.")
+                    break
+                else:
+                    print("Invalid JWT token. Please try again.")
+            
+            # --- Start session heartbeat thread ---
+            threading.Thread(target=session_heartbeat_thread, args=(jwt_token,), daemon=True).start()
+
+        else:
+            jwt_token = None
+            print("Laps will be saved locally.")
+    else:
+        jwt_token = None
+        print("Laps will be saved locally.")
 
     # Set up lap write queue and writer thread
     lap_write_queue = queue.Queue()
-    def lap_writer():
-        while True:
-            lap_data, lap_time = lap_write_queue.get()
-            try:
-                save_lap(lap_data, lap_time, jwt_token, BACKEND_URL)
-            except Exception as e:
-                print(e)
-                sys.exit(1)
-            lap_write_queue.task_done()
-    threading.Thread(target=lap_writer, daemon=True).start()
+    threading.Thread(target=lap_writer, args=(lap_write_queue, jwt_token), daemon=True).start()
 
     try:
         while True:

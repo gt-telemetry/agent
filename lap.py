@@ -1,5 +1,7 @@
+import os
 import requests
 import urllib3
+import json
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -9,6 +11,17 @@ def format_lap_time(lap_time_ms):
     minutes = seconds // 60
     seconds = seconds % 60
     return f"{minutes:02d}-{seconds:02d}-{ms:03d}"
+
+def save_lap_locally(lap_packets, lap_time_ms):
+    lap_time_str = format_lap_time(lap_time_ms)
+    filename = f"lap_{lap_time_str}.json"
+    try:
+        os.makedirs("laps", exist_ok=True)
+        with open(f"laps/{filename}", 'w') as f:
+            f.write(json.dumps(lap_packets, indent=2))
+        print(f"Lap {filename} saved locally.")
+    except Exception as e:
+        print(f"Error saving lap locally: {e}")
 
 def save_lap(lap_packets, lap_time_ms, jwt_token, backend_url):
     lap_time_str = format_lap_time(lap_time_ms)
