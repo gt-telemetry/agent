@@ -46,7 +46,7 @@ def session_heartbeat_thread(jwt_token: str, backend_url: str, failure_event: th
             return
         
 
-def test_jwt_token(jwt_token: str, backend_url: str) -> bool:
+def validate_jwt_token(jwt_token: str, backend_url: str) -> bool:
     """
     Validates JWT token with backend API.
 

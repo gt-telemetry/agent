@@ -17,7 +17,7 @@ import logging
 from typing import Optional, Any
 from gt7_processing import GT7_UDP_PORT, GT7_HEARTBEAT_PORT, HEARTBEAT_INTERVAL, decrypt_packet, GT7Packet, send_heartbeat, GT7HeartbeatError
 from common.lap import lap_writer, LapWriterError
-from common.backend import test_jwt_token, session_heartbeat_thread, JWTValidationError, SessionHeartbeatError
+from common.backend import validate_jwt_token, session_heartbeat_thread, JWTValidationError, SessionHeartbeatError
 
 
 
@@ -107,7 +107,7 @@ def main() -> None:
             while True:
                 try:
                     jwt_token: str = getpass.getpass('Paste your JWT token (input hidden): ')
-                    test_jwt_token(jwt_token, BACKEND_URL)
+                    validate_jwt_token(jwt_token, BACKEND_URL)
                     print("JWT token is valid.")
                     break
                 except (KeyboardInterrupt, EOFError):
