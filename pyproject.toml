@@ -1,0 +1,14 @@
+[project]
+name = "simracing-telemetry-agent"
+version = "0.1.0"
+description = "GT7 Telemetry Agent and utilities for sim racing telemetry collection."
+authors = [{name = "frogwog"}]
+dependencies = [
+    "requests",
+    "pycryptodome",
+    "urllib3"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

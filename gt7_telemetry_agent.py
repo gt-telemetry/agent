@@ -1,63 +1,55 @@
+"""
+GT7 Telemetry Agent
+-------------------
+Main agent script for collecting and saving GT7 telemetry laps.
+Handles session management, lap writing, and communication with backend or local storage.
+"""
+
 import argparse
 import socket
 import sys
 import time
 import threading
 import queue
-import json
 import getpass
 import re
-from gt7_processing import GT7_UDP_PORT, HEARTBEAT_INTERVAL, decrypt_packet, GT7Packet, send_heartbeat
-from lap import save_lap, save_lap_locally, test_jwt_token
-import requests
-import os
+import logging
+from typing import Optional, Any
+from gt7_processing import GT7_UDP_PORT, GT7_HEARTBEAT_PORT, HEARTBEAT_INTERVAL, decrypt_packet, GT7Packet, send_heartbeat, GT7HeartbeatError
+from common.lap import lap_writer, LapWriterError
+from common.backend import test_jwt_token, session_heartbeat_thread, JWTValidationError, SessionHeartbeatError
+
+
 
 BACKEND_URL = 'https://api.gt-telemetry.com'
 
-def session_heartbeat_thread(jwt_token):
-        while True:
-            try:
-                resp = requests.post(f"{BACKEND_URL}/session/heartbeat", headers={"Authorization": f"Bearer {jwt_token}"}, timeout=10, verify=False)
-                if not resp.ok:
-                    print(f"Session heartbeat failed: {resp.status_code} {resp.text}")
-                    print("Exiting agent due to lost session.")
-                    os._exit(1)
-            except Exception as e:
-                print(f"Session heartbeat error: {e}")
-                print("Exiting agent due to lost session.")
-                os._exit(1)
-            time.sleep(60)
 
-def lap_writer(lap_write_queue, jwt_token):
-        while True:
-            try:
-                lap_data, lap_time = lap_write_queue.get()
-                if not jwt_token:
-                    save_lap_locally(lap_data, lap_time)
-                else:
-                    save_lap(lap_data, lap_time, jwt_token, BACKEND_URL)
-            except (KeyboardInterrupt, EOFError):
-                print("\nExiting...")
-                sys.exit(0)
-            except Exception as e:
-                print(e)
-                sys.exit(1)
-            lap_write_queue.task_done()
-
-def main():
+def main() -> None:
+    """
+    Main entry point for GT7 telemetry agent.
+    Handles argument parsing, session setup, socket communication, and lap recording.
+    """
     parser = argparse.ArgumentParser(description="GT7 Telemetry Lap Saver")
     parser.add_argument('--ps_ip', help='PlayStation IP address')
     parser.add_argument('--track', action='store_true', help='Record only positional value to save track layout')
     parser.add_argument('--local', action='store_true', help='Store laps locally instead of uploading to GT Telemetry')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable debug logging')
     args = parser.parse_args()
+
+    # Configure logging for debug only if verbose is set
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.CRITICAL,
+        format='[%(levelname)s] %(name)s:\t\t %(message)s'
+    )
+    logger = logging.getLogger(__name__)
 
     # Prompt for PlayStation IP if not provided
     if not args.ps_ip:
         while True:
             try:
-                ps_ip = input('Enter PlayStation IPv4 address: ')
+                ps_ip: str = input('Enter PlayStation IPv4 address: ')
             except (KeyboardInterrupt, EOFError):
-                print("\nExiting...")
+                print("Exiting...")
                 sys.exit(0)
             # Simple IPv4 validation
             if re.match(r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$', ps_ip):
@@ -65,43 +57,44 @@ def main():
             else:
                 print("Invalid IPv4 address format. Please try again.")
     else:
-        ps_ip = args.ps_ip
+        ps_ip: str = args.ps_ip
 
-    local_ip = "0.0.0.0" 
+    local_ip: str = "0.0.0.0"
 
     # Set up UDP socket for listening
     try:
-        recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        logger.debug(f"Setting up receive socket on port {GT7_UDP_PORT}")
+        recv_sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         recv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         recv_sock.bind(("", GT7_UDP_PORT))
     except Exception as e:
-        print(f"Error binding receive socket: {e}")
+        print(f"Error binding receive socket")
+        logger.debug(e)
         sys.exit(1)
 
     # Set up UDP socket for sending heartbeats, bind to local_ip
     try:
-        send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        logger.debug(f"Setting up send socket on port {GT7_HEARTBEAT_PORT}")
+        send_sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         send_sock.bind((local_ip, 0))  # Bind to local IP and ephemeral port
     except Exception as e:
-        print(f"Error binding send socket: {e}")
+        print(f"Error binding send socket")
+        logger.debug(e)
         sys.exit(1)
 
-    last_heartbeat = 0
-    current_lap = []
-    best_lap = []
-    best_lap_time = float('inf')
-    lap_number = None
-    recording_started = False
+    last_heartbeat: float = 0
+    current_lap: list[Any] = []
+    lap_number: Optional[int] = None
+    recording_started: bool = False
 
     if not args.local:
         # Prompt for local or remote lap saving method
         while True:
             try:
-                save_method = input('Do you want to save your laps locally [l] or remotely on GT Telemetry App [r]: ')
+                save_method: str = input('Do you want to save your laps locally [l] or remotely on GT Telemetry App [r]: ')
             except (KeyboardInterrupt, EOFError):
-                print("\nExiting...")
+                print("Exiting...")
                 sys.exit(0)
-            # Simple IPv4 validation
             if save_method.lower() == 'r':
                 break
             elif save_method.lower() == 'l':
@@ -113,19 +106,26 @@ def main():
             # Prompt for JWT token at startup and test it
             while True:
                 try:
-                    jwt_token = getpass.getpass('Paste your JWT token (input hidden): ')
-                except (KeyboardInterrupt, EOFError):
-                    print("\nExiting...")
-                    sys.exit(0)
-                
-                if test_jwt_token(jwt_token, BACKEND_URL):
+                    jwt_token: str = getpass.getpass('Paste your JWT token (input hidden): ')
+                    test_jwt_token(jwt_token, BACKEND_URL)
                     print("JWT token is valid.")
                     break
-                else:
+                except (KeyboardInterrupt, EOFError):
+                    print("Exiting...")
+                    sys.exit(0)
+                except JWTValidationError as e:
                     print("Invalid JWT token. Please try again.")
-            
-            # --- Start session heartbeat thread ---
-            threading.Thread(target=session_heartbeat_thread, args=(jwt_token,), daemon=True).start()
+                    logger.debug(e)
+                except Exception as e:
+                    print(f"Error occurred during JWT token validation")
+                    logger.debug(e)
+                    sys.exit(1)
+
+            # --- Start session heartbeat thread with failure event ---
+            logger.debug("Starting session heartbeat thread.")
+            heartbeat_failure_event = threading.Event()
+            heartbeat_thread = threading.Thread(target=session_heartbeat_thread, args=(jwt_token, BACKEND_URL, heartbeat_failure_event), daemon=True)
+            heartbeat_thread.start()
 
         else:
             jwt_token = None
@@ -134,30 +134,42 @@ def main():
         jwt_token = None
         print("Laps will be saved locally.")
 
-    # Set up lap write queue and writer thread
-    lap_write_queue = queue.Queue()
-    threading.Thread(target=lap_writer, args=(lap_write_queue, jwt_token), daemon=True).start()
+    # Set up lap write queue and writer thread with failure event
+    logger.debug("Starting lap writer thread.")
+    lap_write_queue: queue.Queue = queue.Queue()
+    lap_failure_event = threading.Event()
+    lap_writer_thread = threading.Thread(target=lap_writer, args=(lap_write_queue, jwt_token, BACKEND_URL, lap_failure_event), daemon=True)
+    lap_writer_thread.start()
 
     try:
         while True:
-            now = time.time()
+            # Check for heartbeat failure event
+            if 'heartbeat_failure_event' in locals() and heartbeat_failure_event.is_set():
+                raise SessionHeartbeatError("Heartbeat failure detected. Exiting...")
+            # Check for lap writer failure event
+            if 'lap_failure_event' in locals() and lap_failure_event.is_set():
+                raise LapWriterError("Lap writer failure detected. Exiting...")
+
+            now: float = time.time()
             if now - last_heartbeat > HEARTBEAT_INTERVAL:
                 send_heartbeat(ps_ip, send_sock)
                 last_heartbeat = now
 
             recv_sock.settimeout(0.1)
             try:
+                data: bytes
+                addr: Any
                 data, addr = recv_sock.recvfrom(4096)
-                decrypted = decrypt_packet(data)
+                decrypted: bytes = decrypt_packet(data)
                 if not decrypted:
                     continue
-                packet = GT7Packet(decrypted)
+                packet: Optional[GT7Packet] = GT7Packet(decrypted)
 
                 if not packet or getattr(packet, 'is_paused', True):
                     continue
                 # Lap change detection
                 if lap_number is not None and \
-                packet.current_lap != 0  and packet.current_lap > lap_number:
+                packet.current_lap != 0 and packet.current_lap > lap_number:
                     # Start recording only after the first lap increment
                     if not recording_started or lap_number == 0:
                         recording_started = True
@@ -165,24 +177,54 @@ def main():
                         current_lap = []
                         current_lap.append(packet)
                         continue
-                    lap_time = packet.last_lap
-                    is_best = lap_time is not None and lap_time > 0 and lap_time < best_lap_time
+                    lap_time: int = packet.last_lap
                     if args.track:
+                        logger.debug(f"Lap completed (track mode). Saving positional data only.")
                         lap_write_queue.put(([p.to_track_dict() for p in current_lap], lap_time))
                     else:
+                        logger.debug(f"Lap completed. Saving telemetry data.")
                         lap_write_queue.put(([p.to_dict() for p in current_lap], lap_time))
-                    if is_best:
-                        best_lap = current_lap.copy()
-                        best_lap_time = lap_time
                     current_lap = []
 
                 lap_number = packet.current_lap
                 current_lap.append(packet)
-            except socket.timeout:
+            except socket.timeout as e:
+                # Nothing to do here, just continue executing the agent
                 continue
     except KeyboardInterrupt:
         print("Exiting...")
+        #Exit threads gracefully
+        if "heartbeat_thread" in locals():
+            heartbeat_thread.join(timeout=2)
+        if "lap_writer_thread" in locals():
+            lap_writer_thread.join(timeout=2)
         sys.exit(0)
+    except GT7HeartbeatError as e:
+        print(f"GT7 heartbeat error: {e}")
+        logger.debug(e)
+        #Exit threads gracefully
+        if "heartbeat_thread" in locals():
+            heartbeat_thread.join(timeout=2)
+        if "lap_writer_thread" in locals():
+            lap_writer_thread.join(timeout=2)
+        sys.exit(1)
+    except (SessionHeartbeatError, LapWriterError) as e:
+        logger.debug(e)
+        #Exit threads gracefully
+        if "heartbeat_thread" in locals():
+            heartbeat_thread.join(timeout=2)
+        if "lap_writer_thread" in locals():
+            lap_writer_thread.join(timeout=2)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        logger.debug(e)
+        #Exit threads gracefully
+        if "heartbeat_thread" in locals():
+            heartbeat_thread.join(timeout=2)
+        if "lap_writer_thread" in locals():
+            lap_writer_thread.join(timeout=2)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

@@ -1,15 +1,32 @@
-import socket
+"""
+GT7 Telemetry Packet Processing
+------------------------------
+Handles decryption and parsing of GT7 UDP telemetry packets.
+"""
+
 import struct
 from Crypto.Cipher import Salsa20
 from datetime import timedelta
-import time
+from typing import Any, Dict, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 GT7_UDP_PORT = 33740
 GT7_HEARTBEAT_PORT = 33739
 HEARTBEAT_INTERVAL = 1.5
 SALSA20_KEY = b"Simulator Interface Packet GT7 ver 0.0"
 
-def decrypt_packet(data):
+def decrypt_packet(data: bytes) -> bytearray:
+    """
+    Decrypts a GT7 UDP packet using Salsa20 cipher.
+
+    Args:
+        data (bytes): Encrypted packet data.
+
+    Returns:
+        bytearray: Decrypted packet data, or empty bytearray if invalid.
+    """
     key = SALSA20_KEY
     oiv = data[0x40:0x44]
     iv1 = int.from_bytes(oiv, byteorder='little')
@@ -25,7 +42,17 @@ def decrypt_packet(data):
     return decrypted
 
 class GT7Packet:
-    def __init__(self, ddata):
+    """
+    Represents a parsed GT7 telemetry packet.
+    Extracts and stores various telemetry fields from decrypted data.
+    """
+    def __init__(self, ddata: Optional[bytes]) -> None:
+        """
+        Initializes GT7Packet from decrypted data.
+
+        Args:
+            ddata (Optional[bytes]): Decrypted packet data.
+        """
         if not ddata:
             return
         self.package_id = struct.unpack('i', ddata[0x70:0x70 + 4])[0]
@@ -101,8 +128,14 @@ class GT7Packet:
         self.in_race = bin(struct.unpack('B', ddata[0x8E:0x8E + 1])[0])[-1] == '1'
         self.is_paused = self.is_paused == 1
         self.in_race = self.in_race == 1
-    
-    def to_dict(self):
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary of selected telemetry fields.
+
+        Returns:
+            Dict[str, Any]: Dictionary of key telemetry values.
+        """
         return {
             'package_id': self.package_id,
             'current_gear': self.current_gear,
@@ -113,18 +146,34 @@ class GT7Packet:
             'position_y': self.position_y,
             'position_z': self.position_z
         }
-    
-    def to_track_dict(self):
-        # This method returns a dictionary with position data only
+
+    def to_track_dict(self) -> Dict[str, float]:
+        """
+        Returns a dictionary with only position data.
+
+        Returns:
+            Dict[str, float]: Dictionary of position values.
+        """
         return {
             'position_x': self.position_x,
             'position_y': self.position_y,
             'position_z': self.position_z,
         }
 
-def send_heartbeat(ps_ip, sock):
+def send_heartbeat(ps_ip: str, sock: Any) -> None:
+    """
+    Sends a heartbeat packet to the PlayStation to keep telemetry stream alive.
+
+    Args:
+        ps_ip (str): PlayStation IP address.
+        sock (Any): UDP socket object.
+    """
     heartbeat = b'A'
     try:
         sock.sendto(heartbeat, (ps_ip, GT7_HEARTBEAT_PORT))
     except Exception as e:
-        print(f"Error sending heartbeat: {e}") 
+        raise GT7HeartbeatError(f"Failed to send heartbeat: {e}")
+
+class GT7HeartbeatError(Exception):
+    """Raised when GT7 heartbeat fails or encounters an error."""
+    pass
