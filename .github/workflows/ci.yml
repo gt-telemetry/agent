@@ -26,10 +26,23 @@ jobs:
           cd agent
           pytest tests
 
+  set-version:
+    name: Set Build Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.setver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set semantic version
+        id: setver
+        run: |
+          echo "VERSION=0.1.0+build${{ github.run_number }}" > agent/version.txt
+          echo "version=0.1.0+build${{ github.run_number }}" >> $GITHUB_OUTPUT
+
   build-linux:
     name: Build Linux Release
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, set-version]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -42,30 +55,19 @@ jobs:
         run: |
           cd agent
           python -m nuitka --onefile gt7_telemetry_agent.py
-  set-version:
-    name: Set Build Version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.setver.outputs.version }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set semantic version
-        id: setver
-        run: |
-          echo "VERSION=0.1.0+build${{ github.run_number }}" >> agent/version.txt
-          echo "version=0.1.0+build${{ github.run_number }}" >> $GITHUB_OUTPUT
           mkdir -p releases
-          mv gt7_telemetry_agent_Linux_x64.bin releases/gt7_telemetry_agent-linux.bin
+          VERSION=$(cat version.txt)
+          mv gt7_telemetry_agent_Linux_x64.bin releases/gt7_telemetry_agent-linux-$VERSION.bin
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
-    needs: [test, set-version]
+        with:
           name: gt7_telemetry_agent-linux
-          path: agent/releases/gt7_telemetry_agent-linux.bin
+          path: agent/releases/gt7_telemetry_agent-linux-${{ needs.set-version.outputs.version }}.bin
 
   build-windows:
     name: Build Windows Release
     runs-on: windows-latest
-    needs: test
+    needs: [test, set-version]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -77,18 +79,19 @@ jobs:
       - name: Build Windows Executable
         run: |
           cd agent
-          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version="1.0.0" --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
-          powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath releases/gt7_telemetry_agent-Win_x64.zip
+          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version="0.1.0" --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
+          $VERSION = Get-Content version.txt
+          powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath releases/gt7_telemetry_agent-windows-$VERSION.zip
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-windows
-    needs: [test, set-version]
+          path: agent/releases/gt7_telemetry_agent-windows-${{ needs.set-version.outputs.version }}.zip
 
   build-macos:
     name: Build macOS Release
     runs-on: macos-latest
-    needs: test
+    needs: [test, set-version]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -102,9 +105,10 @@ jobs:
           cd agent
           python -m nuitka --onefile gt7_telemetry_agent.py
           mkdir -p releases
-          mv gt7_telemetry_agent_macOS.bin releases/gt7_telemetry_agent-macos.bin
+          VERSION=$(cat version.txt)
+          mv gt7_telemetry_agent_macOS.bin releases/gt7_telemetry_agent-macos-$VERSION.bin
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-macos
-    needs: [test, set-version]
+          path: agent/releases/gt7_telemetry_agent-macos-${{ needs.set-version.outputs.version }}.bin
