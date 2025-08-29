@@ -41,13 +41,12 @@ jobs:
         run: |
           python -m nuitka --onefile gt7_telemetry_agent.py
           VERSION=0.1.${{ github.run_number }}
-          mkdir -p releases
-          mv gt7_telemetry_agent_Linux_x64.bin releases/gt7_telemetry_agent-linux-$VERSION.bin
+          mv gt7_telemetry_agent_Linux.bin gt7_telemetry_agent-linux-$VERSION.bin
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-linux
-          path: releases/gt7_telemetry_agent-linux-$VERSION.bin
+          path: gt7_telemetry_agent-linux-$VERSION.bin
 
   build-windows:
     name: Build Windows Release
@@ -64,13 +63,13 @@ jobs:
       - name: Build Windows Executable
         run: |
           python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version="$VERSION" --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
-          VERSION=0.1.${{ github.run_number }}
-          powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath releases/gt7_telemetry_agent-Win-$VERSION.zip
+          $VERSION='0.1.${{ github.run_number }}'
+          powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath gt7_telemetry_agent-Win-$VERSION.zip
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-windows
-          path: releases/gt7_telemetry_agent-windows-$VERSION.zip
+          path: gt7_telemetry_agent-Win-$VERSION.zip
 
   build-macos:
     name: Build macOS Release
@@ -87,11 +86,10 @@ jobs:
       - name: Build macOS Executable
         run: |
           python -m nuitka --onefile gt7_telemetry_agent.py
-          mkdir -p releases
           VERSION=0.1.${{ github.run_number }}
-          mv gt7_telemetry_agent_macOS.bin releases/gt7_telemetry_agent-macos-$VERSION.bin
+          mv gt7_telemetry_agent_macOS.bin gt7_telemetry_agent-macos-$VERSION.bin
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-macos
-          path: releases/gt7_telemetry_agent-macos-$VERSION.bin
+          path: gt7_telemetry_agent-macos-$VERSION.bin
