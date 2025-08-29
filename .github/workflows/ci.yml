@@ -52,7 +52,7 @@ jobs:
   build-windows:
     name: Build Windows Release
     runs-on: windows-latest
-    needs: [test, set-version]
+    needs: [test]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -75,7 +75,7 @@ jobs:
   build-macos:
     name: Build macOS Release
     runs-on: macos-latest
-    needs: [test, set-version]
+    needs: [test]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
