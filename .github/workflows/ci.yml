@@ -18,12 +18,10 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: |
-          cd agent
           pip install -r requirements.txt
           pip install pytest nuitka
       - name: Run tests
         run: |
-          cd agent
           pytest tests
 
   set-version:
@@ -36,7 +34,7 @@ jobs:
       - name: Set semantic version
         id: setver
         run: |
-          echo "VERSION=0.1.0+build${{ github.run_number }}" > agent/version.txt
+          echo "VERSION=0.1.0+build${{ github.run_number }}" > version.txt
           echo "version=0.1.0+build${{ github.run_number }}" >> $GITHUB_OUTPUT
 
   build-linux:
@@ -53,7 +51,6 @@ jobs:
         run: pip install nuitka
       - name: Build Linux Executable
         run: |
-          cd agent
           python -m nuitka --onefile gt7_telemetry_agent.py
           mkdir -p releases
           VERSION=$(cat version.txt)
@@ -62,7 +59,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-linux
-          path: agent/releases/gt7_telemetry_agent-linux-${{ needs.set-version.outputs.version }}.bin
+          path: releases/gt7_telemetry_agent-linux-${{ needs.set-version.outputs.version }}.bin
 
   build-windows:
     name: Build Windows Release
@@ -78,7 +75,6 @@ jobs:
         run: pip install nuitka
       - name: Build Windows Executable
         run: |
-          cd agent
           python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version="0.1.0" --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
           $VERSION = Get-Content version.txt
           powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath releases/gt7_telemetry_agent-windows-$VERSION.zip
@@ -86,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-windows
-          path: agent/releases/gt7_telemetry_agent-windows-${{ needs.set-version.outputs.version }}.zip
+          path: releases/gt7_telemetry_agent-windows-${{ needs.set-version.outputs.version }}.zip
 
   build-macos:
     name: Build macOS Release
@@ -102,7 +98,6 @@ jobs:
         run: pip install nuitka
       - name: Build macOS Executable
         run: |
-          cd agent
           python -m nuitka --onefile gt7_telemetry_agent.py
           mkdir -p releases
           VERSION=$(cat version.txt)
@@ -111,4 +106,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-macos
-          path: agent/releases/gt7_telemetry_agent-macos-${{ needs.set-version.outputs.version }}.bin
+          path: releases/gt7_telemetry_agent-macos-${{ needs.set-version.outputs.version }}.bin
