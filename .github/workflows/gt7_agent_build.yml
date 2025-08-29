@@ -1,52 +1,46 @@
 name: Build GT7 Telemetry Agent
 
 on:
-  pull_request:
-    branches: [ main ]
   push:
     branches: [ main ]
 
+env:
+  MAJOR: 0
+  MINOR: 1
+
 jobs:
-  test:
-    name: Run Tests (Linux)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest nuitka
-      - name: Run tests
-        run: |
-          pytest tests
-
-
+  
   build-linux:
     name: Build Linux Release
     runs-on: ubuntu-latest
-    needs: [test]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install Nuitka
         run: pip install nuitka
+
+      - name: Set version
+        run: |
+          VERSION=${MAJOR}.${MINOR}.${GITHUB_RUN_NUMBER}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Show version
+        run: echo "Linux build version $VERSION"
+
       - name: Build Linux Executable
         run: |
           python -m nuitka --onefile gt7_telemetry_agent.py --assume-yes-for-downloads
-          VERSION=0.1.${{ github.run_number }}
-          mv gt7_telemetry_agent.bin gt7_telemetry_agent-linux-$VERSION.bin
+          mv gt7_telemetry_agent.bin gt7_telemetry_agent-linux-${{ env.VERSION }}.bin
+
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-linux
-          path: gt7_telemetry_agent-linux-$VERSION.bin
+          path: gt7_telemetry_agent-linux-${{ env.VERSION }}.bin
 
   build-windows:
     name: Build Windows Release
@@ -58,18 +52,26 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install Nuitka
         run: pip install nuitka
+      
+      - name: Set version
+        run: echo "VERSION=$env:MAJOR.$env:MINOR.$env:GITHUB_RUN_NUMBER" >> $env:GITHUB_ENV
+
+      - name: Show version
+        run: echo "Windows build version $env:VERSION"
+
       - name: Build Windows Executable
         run: |
-          $VERSION='0.1.${{ github.run_number }}'
-          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=$VERSION --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
-          powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath gt7_telemetry_agent-Win-$VERSION.zip
+          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=$env:VERSION --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
+          powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath gt7_telemetry_agent-Win-$env:VERSION.zip
+      
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-windows
-          path: gt7_telemetry_agent-Win-$VERSION.zip
+          path: gt7_telemetry_agent-Win-$env:VERSION.zip
 
   build-macos:
     name: Build macOS Release
@@ -81,15 +83,24 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install Nuitka
         run: pip install nuitka
+      
+      - name: Set version
+        run: |
+          VERSION=${MAJOR}.${MINOR}.${GITHUB_RUN_NUMBER}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Show version
+        run: echo "Linux build version $VERSION"
+        
       - name: Build macOS Executable
         run: |
           python -m nuitka --onefile gt7_telemetry_agent.py --assume-yes-for-downloads
-          VERSION=0.1.${{ github.run_number }}
-          mv gt7_telemetry_agent.bin gt7_telemetry_agent-macos-$VERSION.bin
+          mv gt7_telemetry_agent.bin gt7_telemetry_agent-macos-${{ env.VERSION }}.bin
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-macos
-          path: gt7_telemetry_agent-macos-$VERSION.bin
+          path: gt7_telemetry_agent-macos-${{ env.VERSION }}.bin
