@@ -41,7 +41,7 @@ jobs:
         run: |
           python -m nuitka --onefile gt7_telemetry_agent.py
           VERSION=0.1.${{ github.run_number }}
-          mv gt7_telemetry_agent_Linux.bin gt7_telemetry_agent-linux-$VERSION.bin
+          mv gt7_telemetry_agent.bin gt7_telemetry_agent-linux-$VERSION.bin
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -62,7 +62,7 @@ jobs:
         run: pip install nuitka
       - name: Build Windows Executable
         run: |
-          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version="$VERSION" --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
+          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=$VERSION --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
           $VERSION='0.1.${{ github.run_number }}'
           powershell Compress-Archive -Path gt7_telemetry_agent.dist/* -DestinationPath gt7_telemetry_agent-Win-$VERSION.zip
       - name: Upload Windows Artifact
@@ -87,7 +87,7 @@ jobs:
         run: |
           python -m nuitka --onefile gt7_telemetry_agent.py
           VERSION=0.1.${{ github.run_number }}
-          mv gt7_telemetry_agent_macOS.bin gt7_telemetry_agent-macos-$VERSION.bin
+          mv gt7_telemetry_agent.bin gt7_telemetry_agent-macos-$VERSION.bin
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
