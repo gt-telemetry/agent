@@ -16,7 +16,7 @@ A cross-platform telemetry agent for Gran Turismo 7, designed to collect, save, 
 1. Clone the repository:
    ```bash
    git clone https://github.com/frogwog/SimRacingTelemetryApp-agent.git
-   cd SimRacingTelemetryApp/agent
+   cd SimRacingTelemetryApp-agent
    ```
 2. Install dependencies:
    ```bash
