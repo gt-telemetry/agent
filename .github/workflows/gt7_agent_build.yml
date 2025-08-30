@@ -1,15 +1,30 @@
-name: Build GT7 Telemetry Agent
+name: PR GT7 agent Test and Build
 
 on:
-  push:
+  pull_request:
     branches: [ main ]
 
-env:
-  VERSION: 0.1.${{ github.run_number }}
-
 jobs:
+
+  test:
+    name: Run Tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest nuitka
+      - name: Run tests
+        run: |
+          pytest tests
   
   build-linux:
+    needs: [test]
     name: Build Linux Release
     runs-on: ubuntu-latest
     steps:
@@ -30,11 +45,12 @@ jobs:
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gt7_telemetry_agent-linux-${{ env.VERSION }}
+          name: gt7_telemetry_agent-linux-${{ github.run_number }}
           path: gt7_telemetry_agent-linux.bin
 
   build-windows:
     name: Build Windows Release
+    needs: [test]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,16 +64,17 @@ jobs:
 
       - name: Build Windows Executable
         run: |
-          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=${{ env.VERSION }} --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
+          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=${{ github.run_number }} --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gt7_telemetry_agent-windows-${{ env.VERSION }}
+          name: gt7_telemetry_agent-windows-${{ github.run_number }}
           path: gt7_telemetry_agent.dist/*
 
   build-macos:
     name: Build macOS Release
+    needs: [test]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -77,5 +94,5 @@ jobs:
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gt7_telemetry_agent-macos-${{ env.VERSION }}
+          name: gt7_telemetry_agent-macos-${{ github.run_number }}
           path: gt7_telemetry_agent-macos.bin
