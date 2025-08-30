@@ -1,0 +1,82 @@
+name: Release GT7 agent
+
+on:
+  push:
+    tags:
+      - 'v*'    # only version tags like v0.1.0, v1.2.3
+
+env:
+  VERSION: 0.1.0
+
+jobs:
+
+  build-linux:
+    name: Build Linux Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Nuitka
+        run: pip install nuitka
+
+      - name: Build Linux Executable
+        run: |
+          python -m nuitka --onefile gt7_telemetry_agent.py --assume-yes-for-downloads
+          mv gt7_telemetry_agent.bin gt7_telemetry_agent-linux.bin
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gt7_telemetry_agent-linux-${{ env.VERSION }}
+          path: gt7_telemetry_agent-linux.bin
+
+  build-windows:
+    name: Build Windows Release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Nuitka
+        run: pip install nuitka
+
+      - name: Build Windows Executable
+        run: |
+          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=${{ env.VERSION }} --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gt7_telemetry_agent-windows-${{ env.VERSION }}
+          path: gt7_telemetry_agent.dist/*
+
+  build-macos:
+    name: Build macOS Release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Nuitka
+        run: pip install nuitka
+      
+      - name: Build macOS Executable
+        run: |
+          python -m nuitka --onefile gt7_telemetry_agent.py --assume-yes-for-downloads
+          mv gt7_telemetry_agent.bin gt7_telemetry_agent-macos.bin
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gt7_telemetry_agent-macos-${{ env.VERSION }}
+          path: gt7_telemetry_agent-macos.bin
