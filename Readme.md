@@ -3,6 +3,8 @@
 
 A cross-platform telemetry agent for Gran Turismo 7, designed to collect, save, and upload lap data for analysis and sharing. Supports local and remote storage, robust error handling, and easy integration with the GT Telemetry backend.
 
+Laps recorded with this agent can be uploaded and analyzed on the GT Telemetry website: [gt-telemetry.com](https://gt-telemetry.com)
+
 ---
 
 ## Setup
