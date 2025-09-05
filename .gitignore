@@ -1,3 +1,7 @@
 __pycache__
 releases/
 laps/
+*.bin
+*.exe
+gt7_telemetry_agent.dist/
+gt7_telemetry_agent.build/

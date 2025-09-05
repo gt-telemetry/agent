@@ -1,4 +1,4 @@
-from gt7_processing import decrypt_packet, GT7Packet
+from gt7.gt7_processing import decrypt_packet, GT7Packet
 
 class DummyPacket:
     def __init__(self, data):

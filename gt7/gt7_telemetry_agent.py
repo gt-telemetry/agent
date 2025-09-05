@@ -15,7 +15,7 @@ import getpass
 import re
 import logging
 from typing import Optional, Any
-from gt7_processing import GT7_UDP_PORT, GT7_HEARTBEAT_PORT, HEARTBEAT_INTERVAL, decrypt_packet, GT7Packet, send_heartbeat, GT7HeartbeatError
+from gt7.gt7_processing import GT7_UDP_PORT, GT7_HEARTBEAT_PORT, HEARTBEAT_INTERVAL, decrypt_packet, GT7Packet, send_heartbeat, GT7HeartbeatError
 from common.lap import lap_writer, LapWriterError
 from common.backend import validate_jwt_token, session_heartbeat_thread, JWTValidationError, SessionHeartbeatError
 
