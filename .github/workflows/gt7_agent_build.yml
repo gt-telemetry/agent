@@ -39,8 +39,7 @@ jobs:
 
       - name: Build Linux Executable
         run: |
-          python -m nuitka --onefile gt7_telemetry_agent.py --assume-yes-for-downloads
-          mv gt7_telemetry_agent.bin gt7_telemetry_agent-linux.bin
+          python -m nuitka --standalone --assume-yes-for-downloads --onefile --follow-imports --output-filename=gt7_telemetry_agent-linux.bin gt7/gt7_telemetry_agent.py
 
       - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
@@ -64,7 +63,7 @@ jobs:
 
       - name: Build Windows Executable
         run: |
-          python -m nuitka --standalone --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=${{ github.run_number }} --assume-yes-for-downloads --remove-output gt7_telemetry_agent.py
+          python -m nuitka --standalone --assume-yes-for-downloads --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=${{ github.run_number }} --follow-imports --remove-output gt7/gt7_telemetry_agent.py
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
@@ -88,8 +87,7 @@ jobs:
       
       - name: Build macOS Executable
         run: |
-          python -m nuitka --onefile gt7_telemetry_agent.py --assume-yes-for-downloads
-          mv gt7_telemetry_agent.bin gt7_telemetry_agent-macos.bin
+          python -m nuitka --standalone --assume-yes-for-downloads --onefile --follow-imports --output-filename=gt7_telemetry_agent-macos.bin gt7/gt7_telemetry_agent.py
 
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
