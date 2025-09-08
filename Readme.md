@@ -27,11 +27,11 @@ Laps recorded with this agent can be uploaded and analyzed on the GT Telemetry w
 3. (Optional) Build with Nuitka:
    - **Windows:**
      ```bash
-     python -m nuitka --standalone --windows-company-name="<Your Company Name>" --windows-product-name="<Agent name>" --windows-product-version="1.0.0" --assume-yes-for-downloads --remove-output <path to main>
+     python -m nuitka --standalone --windows-company-name="<Your Company Name>" --windows-product-name="<Agent name>" --windows-product-version="1.0.0" --assume-yes-for-downloads --remove-output gt7/gt7_telemetry_agent.py
      ```
    - **Linux:**
      ```bash
-     python -m nuitka --onefile <path to main>
+     python -m nuitka --onefile gt7/gt7_telemetry_agent.py
      ```
 
 ---
@@ -40,7 +40,7 @@ Laps recorded with this agent can be uploaded and analyzed on the GT Telemetry w
 
 Run the agent from the command line:
 ```bash
-python gt7_telemetry_agent.py [--ps_ip <PlayStation_IP>] [--local] [--track] [--verbose]
+python -m gt7.gt7_telemetry_agent [--ps_ip <PlayStation_IP>] [--local] [--track] [--verbose]
 ```
 
 - `--ps_ip` : PlayStation IPv4 address (prompted if not provided)
