@@ -35,7 +35,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Nuitka
-        run: pip install nuitka
+        run: pip install nuitka imageio
 
       - name: Build Linux Executable
         run: |
@@ -59,7 +59,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install Nuitka
-        run: pip install nuitka
+        run: pip install nuitka imageio
 
       - name: Build Windows Executable
         run: |
