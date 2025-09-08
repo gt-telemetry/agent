@@ -63,7 +63,7 @@ jobs:
 
       - name: Build Windows Executable
         run: |
-          python -m nuitka --standalone --assume-yes-for-downloads --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=${{ github.run_number }} --windows-icon-from-ico=gtt-logo.png --follow-imports --remove-output gt7/gt7_telemetry_agent.py
+          python -m nuitka --standalone --assume-yes-for-downloads --windows-company-name="GT Telemetry" --windows-product-name="GT7TelemetryAgent" --windows-product-version=${{ github.run_number }} --windows-icon-template-exe=gtt-logo.png --follow-imports --remove-output gt7/gt7_telemetry_agent.py
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
@@ -93,4 +93,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-macos-${{ github.run_number }}
-          path: gt7_telemetry_agent-macos.app
+          path: gt7_telemetry_agent.app/*
