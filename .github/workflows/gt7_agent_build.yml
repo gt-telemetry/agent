@@ -93,11 +93,9 @@ jobs:
       
       - name: Build macOS Executable
         run: |
-          python -m nuitka --follow-imports --standalone --assume-yes-for-downloads --macos-create-app-bundle --macos-app-icon=gtt-logo.png gt7/gt7_telemetry_agent.py
-          mkdir app_pkg
-          mv gt7_telemetry_agent.app app_pkg
+          python -m nuitka --follow-imports --standalone --assume-yes-for-downloads --onefile --output-filename=gt7_telemetry_agent-macos gt7/gt7_telemetry_agent.py
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: gt7_telemetry_agent-macos-${{ github.run_number }}
-          path: app_pkg
+          path: gt7_telemetry_agent-macos
