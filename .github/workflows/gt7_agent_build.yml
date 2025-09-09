@@ -87,7 +87,7 @@ jobs:
       
       - name: Build macOS Executable
         run: |
-          python -m nuitka --standalone --assume-yes-for-downloads --macos-create-app-bundle --macos-app-icon=gtt-logo.png --follow-imports gt7/gt7_telemetry_agent.py
+          python -m nuitka --follow-imports --include-module=Crypto.Cipher --standalone --assume-yes-for-downloads --macos-create-app-bundle --macos-app-icon=gtt-logo.png gt7/gt7_telemetry_agent.py
           mkdir app_pkg
           mv gt7_telemetry_agent.app app_pkg
       - name: Upload macOS Artifact
