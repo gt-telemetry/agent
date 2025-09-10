@@ -24,15 +24,6 @@ Laps recorded with this agent can be uploaded and analyzed on the GT Telemetry w
    ```bash
    pip install -r requirements.txt
    ```
-3. (Optional) Build with Nuitka:
-   - **Windows:**
-     ```bash
-     python -m nuitka --standalone --windows-company-name="<Your Company Name>" --windows-product-name="<Agent name>" --windows-product-version="1.0.0" --assume-yes-for-downloads --remove-output gt7/gt7_telemetry_agent.py
-     ```
-   - **Linux:**
-     ```bash
-     python -m nuitka --onefile gt7/gt7_telemetry_agent.py
-     ```
 
 ---
 
